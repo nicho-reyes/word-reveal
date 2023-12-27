@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gimme 5</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h1>Gimme 5</h1>
+
+<!-- Modal -->
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <p id="modalCategory">(ENGLISH,TAGALOG) MGA GAMIT SA BAHAY NA NAGSISIMULA SA "W"</p>
+    </div>
+</div>
+
+<div id="categoryText" style="font-size: 1.5em;"></div>
+<div id="timer">Time Remaining: 45 seconds</div>
+<div id="revealCount"></div>
+<div id="startTime"></div>
+<div id="revealTime"></div>
+<div id="totalTime"></div>
+<div id="elapsedTime"></div>
+<div id="wordContainer"></div>
+<div id="category-screen">
+    <h1>Choose category</h1>
+    <div class="categories">
+        <button class="startButton" onclick="startGame(0)">Trial</button>
+        <button class="startButton" onclick="startGame(1)">Tao 1</button>
+        <button class="startButton" onclick="startGame(2)">Tao 2</button>
+        <button class="startButton" onclick="startGame(3)">Bagay</button>
+        <button class="startButton" onclick="startGame(4)">Hayop</button>
+        <button class="startButton" onclick="startGame(5)">Lugar</button>
+        <button class="startButton" onclick="startGame(6)">Pagkain 1</button>
+        <button class="startButton" onclick="startGame(7)">Pagkain 2</button>
+    </div>
+</div>
+
+<audio id="countdownAudio" src="countdown.mp3"></audio>
+<audio id="correctAudio" src="correct.mp3"></audio>
+<audio id="victoryAudio" src="victory.mp3"></audio>
+<audio id="incorrectAudio" src="wrong.mp3"></audio>
+<audio id="initializeAudio" src="initialize.mp3"></audio>
+<audio id="zeroAudio" src="zero.mp3"></audio>
+<audio id="gameOverAudio" src="gameover.mp3"></audio>
+
+<script>
+
+    const categories = [
+        // trial
+        {
+            q: `(TAGALOG) MGA PESTE SA LOOB NG BAHAY`,
+            a: ['IPIS', 'DAGA', 'ANAY', 'LANGGAM', 'SUROT']
+        },
+        // tao 1
+        {
+            q: `(ENGLISH) PARTE NG KATAWAN NG TAO NA NAGSISIMULA SA LETTER “F”`,
+            a: ['FINGER', 'FOOT/FEET', 'FACE', 'FOREHEAD', 'FINGERNAIL']
+        },
+        // tao 2
+        {
+            q: `PANGALAN NG LOCAL ACTRESS NA ANG PANGALAN AY NAGSISIMULA SA LETTER "J"`,
+            a: ['JENNYLYN MERCADO', 'JULIA BARRETTO', 'JOLINA MAGDANGAL', 'JODI STA MARIA', 'JANICE DE BELEN']
+        },
+        // bagay
+        {
+            q: `(ENGLISH,TAGALOG) MGA GAMIT SA BAHAY NA NAGSISIMULA SA "W"`,
+            a: ['WALIS', 'WALL CLOCK', 'WASHING MACHINE', 'WINDOW', 'WATER DISPENSER']
+        },
+        // hayop
+        {
+            // q: `BREED NG ASO NA TWO WORDS`,
+            q: `(ENGLISH) HAYOP NA MAY SHELL`,
+            // a: [`SHI TZU`, 'GOLDEN RETRIEVER', 'GERMAN SHEPHERD', 'FRENCH BULLDOG', 'SIBERIAN HUSKY']
+            a: [`TURTLE`, 'CRAB', 'SNAIL', 'TORTOISE', 'OYSTER']
+        },
+        // lugar
+        {
+            q: `MGA BANSA SA ASIA NA NAGTATAPOS SA LETTER “A”`,
+            a: ['INDIA', 'MALAYSIA', 'INDONESIA', 'CHINA', 'CAMBODIA']
+        },
+        // pagkain 1
+        {
+            q: `(ENGLISH, TAGALOG) MGA KLASE NG SAGING`,
+            a: ['SABA', 'LAKATAN', 'LATUNDAN', 'SENYORITA', 'CAVENDISH']
+        },
+        // pagkain 2
+        {
+            q: `(ENGLISH, TAGALOG) PAGKAIN NA MAY SAGO`,
+            a: [`SAGO'T GULAMAN`, 'MILK TEA', 'HALO HALO', 'BILO-BILO', 'TAHO']
+        }
+    ];
+
+    let words = ['WALIS', 'WALL CLOCK', 'WASHING MACHINE', 'WINDOW', 'WATER DISPENSER'];
+    let startTime;
+    let revealTime;
+    let revealCount = 0;
+    let elapsedTimeAfterFirstReveal;
+    let timeLimit = 45;
+    let timerInterval;
+    let gameActive = false;
+
+    function startGame(cat) {
+        playInitializeSoundEffect();
+        // Display the modal
+        const modal = document.getElementById('myModal');
+        modal.style.display = 'block';
+
+        const chosenCategory = categories[cat];
+        // Set the modal category text
+        const modalCategory = document.getElementById('modalCategory');
+        modalCategory.textContent = chosenCategory.q;
+        words = chosenCategory.a;
+        const categoryText = document.getElementById('categoryText');
+        const category = modalCategory.textContent;
+
+        // Set a timeout to close the modal after 5 seconds
+        setTimeout(function () {
+            modal.style.display = 'none';
+
+            // Display the category text normally
+            categoryText.textContent = category;
+            categoryText.style.display = 'block';
+
+            // Hide the "Start Game" button
+            document.getElementById('category-screen').style.display = 'none';
+
+            // Play the countdown audio
+            const countdownAudio = document.getElementById('countdownAudio');
+            countdownAudio.play();
+
+            // Officially start the game immediately
+            initiateGame();
+        }, 5000);
+    }
+
+    function initiateGame() {
+        gameActive = true;
+
+        // Officially start the game
+        // Reset variables and UI
+        startTime = new Date();
+        revealTime = null;
+        revealCount = 0;
+        elapsedTimeAfterFirstReveal = null;
+        document.getElementById('wordContainer').innerHTML = '';
+        document.getElementById('timer').textContent = `Time Remaining: ${timeLimit} seconds`;
+        updateRevealCount();
+
+        // Generate word elements
+        for (let i = 0; i < words.length; i++) {
+            createWordElement(i);
+        }
+
+        // Set a timeout to disable the game after the time limit
+        setTimeout(disableGame, timeLimit * 1000);
+
+        // Update timer in real-time
+        timerInterval = setInterval(updateTimer, 1000);
+
+        // Set the audio to loop after the initial play
+        countdownAudio.loop = true;
+
+        // Add event listeners for key presses
+        document.addEventListener('keydown', handleKeyPress);
+    }
+
+    function createWordElement(index) {
+        const wordContainer = document.getElementById('wordContainer');
+        const wordElement = document.createElement('div');
+        wordElement.className = 'word';
+        wordElement.textContent = 'Click to reveal';
+        wordElement.addEventListener('click', function () {
+            revealWord(index);
+        });
+
+        wordContainer.appendChild(wordElement);
+    }
+
+    function revealWord(index) {
+        const wordElement = document.getElementById('wordContainer').children[index];
+
+        // Check if the word is already revealed
+        if (!wordElement.classList.contains('revealed')) {
+            const revealedWord = document.createElement('div');
+            revealedWord.className = 'word revealed disabled';
+            if (!gameActive) {
+                revealedWord.classList.add('red');
+            }
+            revealedWord.textContent = words[index];
+
+            wordElement.replaceWith(revealedWord);
+            if (gameActive) {
+                revealCount++;
+
+                // Record the reveal time if it's the first word
+                if (revealTime === null) {
+                    revealTime = new Date();
+                    elapsedTimeAfterFirstReveal = (revealTime - startTime) / 1000;
+                    document.getElementById('elapsedTime').textContent = `Time Elapsed After First Reveal: ${elapsedTimeAfterFirstReveal} seconds`;
+                }
+
+                // Update the reveal count display
+                updateRevealCount();
+            }
+        }
+    }
+
+    function playInitializeSoundEffect() {
+        const soundEffect = document.getElementById('initializeAudio');
+        soundEffect.playbackRate = 1.8;
+        soundEffect.play();
+    }
+
+    function playCorrectSoundEffect() {
+        const soundEffect = document.getElementById('correctAudio');
+        soundEffect.pause();
+        soundEffect.currentTime = 0;
+        soundEffect.play();
+    }
+
+    function playVictorySoundEffect() {
+        const soundEffect = document.getElementById('victoryAudio');
+        soundEffect.currentTime = 0;
+        soundEffect.play();
+    }
+
+    function playIncorrectSoundEffect() {
+        const soundEffect = document.getElementById('incorrectAudio');
+        soundEffect.currentTime = 0;
+        soundEffect.play();
+    }
+
+    function playZeroSoundEffect() {
+        const soundEffect = document.getElementById('zeroAudio');
+        soundEffect.currentTime = 0;
+        soundEffect.play();
+    }
+
+    function playGameOverSoundEffect() {
+        const soundEffect = document.getElementById('gameOverAudio');
+        soundEffect.currentTime = 0;
+        soundEffect.play();
+    }
+
+    function updateRevealCount() {
+        document.getElementById('revealCount').textContent = `Words Revealed: ${revealCount}`;
+        if (revealCount >= 1) {
+            playCorrectSoundEffect();
+        }
+        if (revealCount >= 5) {
+            disableGame();
+            playVictorySoundEffect();
+        }
+    }
+
+    function disableGame() {
+        if (revealCount < 1) {
+            playZeroSoundEffect();
+        } else if (revealCount < 5) {
+            playGameOverSoundEffect();
+        }
+        clearInterval(timerInterval);
+        gameActive = false;
+
+        // Stop the countdown audio
+        const countdownAudio = document.getElementById('countdownAudio');
+        countdownAudio.pause();
+        countdownAudio.currentTime = 0;
+
+        // Calculate and display the total time elapsed
+        const endTime = new Date();
+        const totalTime = (endTime - startTime) / 1000;
+        document.getElementById('timer').textContent = `Game Over! Total Time Elapsed: ${totalTime} seconds`;
+
+        // Remove event listeners for key presses
+        document.removeEventListener('keydown', handleKeyPress);
+    }
+
+    function updateTimer() {
+        if (gameActive) {
+            const currentTime = new Date();
+            const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+            const remainingTime = Math.max(0, timeLimit - elapsedSeconds);
+            document.getElementById('timer').textContent = `Time Remaining: ${remainingTime} seconds`;
+
+            if (remainingTime === 0) {
+                disableGame();
+            }
+        }
+    }
+
+    function handleKeyPress(event) {
+        // Check if the pressed key is a number between 1 and 5
+        const numberKey = parseInt(event.key);
+        if (numberKey === 0) {
+            playIncorrectSoundEffect();
+        } else if (!isNaN(numberKey) && numberKey >= 1 && numberKey <= 5) {
+            // Open the corresponding tile
+            revealWord(numberKey - 1);
+        }
+    }
+
+    // Get the modal
+    const modal = document.getElementById('myModal');
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function (event) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+</script>
+
+</body>
+</html>
